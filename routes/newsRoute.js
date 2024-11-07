@@ -8,5 +8,5 @@ router.get('/', newsController.getContents);
 router.post('/', newsController.addContent);
 router.put('/:id', newsController.updateContent);
 router.delete('/:id', newsController.deleteContent);
-
+router.get('/:id', newsController.getNewsById);
 module.exports = router;

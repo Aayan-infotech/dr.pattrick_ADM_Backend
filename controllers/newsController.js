@@ -34,7 +34,7 @@ exports.uploadImage = (req, res) => {
 exports.getContents = async (req, res) => {
   try {
     const contents = await News.find();
-    res.status(200).json(contents);
+    res.status(200).json({ message: 'All News', contents });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -50,6 +50,20 @@ exports.addContent = async (req, res) => {
   }
 };
 
+exports.getNewsById = async (req, res) => {
+  try {
+    const newsId = req.params.id;
+    const news = await News.findById(newsId);
+
+    if (!news) {
+      return res.status(404).json({ message: 'news not found' });
+    }
+
+    res.status(200).json({ message: 'News', news });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching news by ID', error });
+  }
+};
 exports.updateContent = async (req, res) => {
   try {
     const content = await News.findByIdAndUpdate(req.params.id, req.body, { new: true });
