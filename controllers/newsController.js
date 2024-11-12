@@ -27,7 +27,7 @@ exports.uploadImage = (req, res) => {
     }
 
     // Send the uploaded file URL as the response
-    const imageUrl = `http://44.196.192.232:3127/uploads/${req.file.filename}`;
+    const imageUrl = `http://localhost:3127/uploads/${req.file.filename}`;
     res.status(200).json({ imageUrl });
   });
 };
@@ -40,15 +40,66 @@ exports.getContents = async (req, res) => {
   }
 };
 
+// controller code for adding content
 exports.addContent = async (req, res) => {
   try {
-    const content = new News(req.body);
-    await content.save();
-    res.status(201).json(content);
+    const { title, content } = req.body;
+
+    if (!content) {
+      return res.status(400).json({ message: 'Content is required.' });
+    }
+
+    // Capture file details for thumbnail if it exists
+    const thumbnail = req.file
+      ? {
+          filename: req.file.originalname,
+          contentType: req.file.mimetype,
+          url: req.file.location // assuming multer-s3 provides the file URL here
+        }
+      : undefined; // Let the default thumbnail take over if no file is uploaded
+
+    // Create the news document with the provided details
+    const news = new News({
+      title,
+      content,
+      thumbnail: thumbnail || undefined // set to default if thumbnail is undefined
+    });
+
+    await news.save();
+    res.status(201).json(news);
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+exports.updateContent = async (req, res) => {
+  try {
+    // Capture file details for thumbnail if it exists
+    const thumbnail = req.file
+      ? {
+          filename: req.file.key,
+          contentType: req.file.mimetype,
+          url: req.file.location
+        }
+      : undefined;
+
+    // Prepare update data with thumbnail if a new one is uploaded
+    const updateData = {
+      ...req.body,
+      ...(thumbnail && { thumbnail })
+    };
+
+    // Update the content with the new data
+    const content = await News.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    res.status(200).json(content);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 };
+
 
 exports.getNewsById = async (req, res) => {
   try {
@@ -64,14 +115,7 @@ exports.getNewsById = async (req, res) => {
     res.status(500).json({ message: 'Error fetching news by ID', error });
   }
 };
-exports.updateContent = async (req, res) => {
-  try {
-    const content = await News.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.status(200).json(content);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-};
+
 
 exports.deleteContent = async (req, res) => {
   try {
