@@ -27,14 +27,46 @@ exports.uploadImage = (req, res) => {
     }
 
     // Send the uploaded file URL as the response
-    const imageUrl = `http://localhost:3127/uploads/${req.file.filename}`;
+    const imageUrl = `http://44.196.192.232:3127/uploads/${req.file.filename}`;
     res.status(200).json({ imageUrl });
   });
 };
+
+
 exports.getContents = async (req, res) => {
   try {
-    const contents = await Knowledge.find();
-    res.status(200).json({ message: 'All knowledge', contents });
+    const { page = 1, limit = 10, search = '' } = req.query;
+
+    // Convert page and limit to numbers
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+
+    // Create search criteria for the title or content
+    const searchCriteria = search
+      ? { $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { content: { $regex: search, $options: 'i' } }
+        ]}
+      : {};
+
+    // Fetch Knowledge with pagination and search
+    const contents = await Knowledge.find(searchCriteria)
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum);
+
+    // Count total documents for pagination metadata
+    const total = await Knowledge.countDocuments(searchCriteria);
+
+    res.status(200).json({
+      message: 'All Knowledge',
+      data: contents,
+      pagination: {
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
+      },
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
