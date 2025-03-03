@@ -27,7 +27,7 @@ exports.uploadImage = (req, res) => {
     }
 
     // Send the uploaded file URL as the response
-    const imageUrl = `http://44.196.64.110:3127/uploads/${req.file.filename}`;
+    const imageUrl = `http://54.236.98.193:3127/uploads/${req.file.filename}`;
     res.status(200).json({ imageUrl });
   });
 };
