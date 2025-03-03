@@ -7,7 +7,7 @@ pipeline {
         HOST_PORT = "3127"
         DOCKER_HUB_USERNAME = credentials('docker-hub-username')
         DOCKER_HUB_PASSWORD = credentials('docker-hub-password')
-        EMAIL_RECIPIENTS = "atulrajput.work@gmail.com"
+        EMAIL_RECIPIENTS = "utkarsh.gupta@aayaninfotech.com"
     }
 
     stages {
@@ -169,7 +169,7 @@ pipeline {
                     """,
                     to: "${EMAIL_RECIPIENTS}",
                     from: "development.aayanindia@gmail.com",
-                    replyTo: "atulrajput.work@gmail.com",
+                    replyTo: "utkarsh.gupta@aayaninfotech.com",
                     mimeType: 'text/html'
                 )
             }
@@ -192,7 +192,7 @@ pipeline {
                     attachLog: true,
                     to: "${EMAIL_RECIPIENTS}",
                     from: "development.aayanindia@gmail.com",
-                    replyTo: "atulrajput.work@gmail.com",
+                    replyTo: "utkarsh.gupta@aayaninfotech.com",
                     mimeType: 'text/html'
                 )
             }
