@@ -27,11 +27,10 @@ exports.uploadImage = (req, res) => {
     }
 
     // Send the uploaded file URL as the response
-    const imageUrl = `http://54.236.98.193:3127/uploads/${req.file.filename}`;
+    const imageUrl = `http://localhost:3127/uploads/${req.file.filename}`;
     res.status(200).json({ imageUrl });
   });
 };
-
 
 exports.getContents = async (req, res) => {
   try {
@@ -75,10 +74,33 @@ exports.getContents = async (req, res) => {
 // controller code for adding content
 exports.addContent = async (req, res) => {
   try {
-    const { title, content } = req.body;
+    const { title, keywords, content, referenceLink } = req.body;
 
     if (!content) {
       return res.status(400).json({ message: 'Content is required.' });
+    }
+
+    let parsedKeywords = [];
+
+    if (keywords) {
+      if (Array.isArray(keywords)) {
+        parsedKeywords = keywords;
+      } else if (typeof keywords === "string") {
+        if (keywords.startsWith("[") && keywords.endsWith("]")) {
+          try {
+            parsedKeywords = JSON.parse(keywords);
+            if (!Array.isArray(parsedKeywords)) {
+              throw new Error();
+            }
+          } catch (error) {
+            return res.status(400).json({ message: "Invalid keywords format. Must be a valid JSON array." });
+          }
+        } else {
+          parsedKeywords = [keywords];
+        }
+      } else {
+        return res.status(400).json({ message: "Invalid keywords format. Must be an array." });
+      }
     }
 
     // Capture file details for thumbnail if it exists
@@ -93,7 +115,9 @@ exports.addContent = async (req, res) => {
     // Create the Knowledge document with the provided details
     const knowledge = new Knowledge({
       title,
+      keywords: parsedKeywords,
       content,
+      referenceLink,
       thumbnail: thumbnail || undefined // set to default if thumbnail is undefined
     });
 
@@ -106,8 +130,7 @@ exports.addContent = async (req, res) => {
   }
 };
 
-
-exports.updateContent = async (req, res) => {
+exports.updateContent1 = async (req, res) => {
   try {
     // Capture file details for thumbnail if it exists
     const thumbnail = req.file
@@ -132,6 +155,54 @@ exports.updateContent = async (req, res) => {
   }
 };
 
+exports.updateContent = async (req, res) => {
+  try {
+    let { title, keywords, content } = req.body;
+    let parsedKeywords = [];
+
+    if (keywords) {
+      if (Array.isArray(keywords)) {
+        parsedKeywords = keywords;
+      } else if (typeof keywords === "string") {
+        try {
+          parsedKeywords = JSON.parse(keywords);
+          if (!Array.isArray(parsedKeywords)) {
+            parsedKeywords = [keywords]; // If it's a single string, treat it as a single keyword
+          }
+        } catch (error) {
+          parsedKeywords = [keywords]; // Treat as a single keyword if JSON parsing fails
+        }
+      } else {
+        return res.status(400).json({ message: "Invalid keywords format. Must be an array or a string." });
+      }
+    }
+
+    const thumbnail = req.file
+      ? {
+          filename: req.file.originalname,
+          contentType: req.file.mimetype,
+          url: req.file.location,
+        }
+      : undefined;
+
+    const updateData = {
+      title,
+      keywords: parsedKeywords,
+      content,
+      ...(thumbnail && { thumbnail })
+    };
+
+    const contentUpdated = await Knowledge.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    
+    if (!contentUpdated) {
+      return res.status(404).json({ message: "Content not found." });
+    }
+
+    res.status(200).json(contentUpdated);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
 
 exports.getKnowledgeById = async (req, res) => {
   try {
@@ -142,13 +213,17 @@ exports.getKnowledgeById = async (req, res) => {
       return res.status(404).json({ message: 'Knowledge not found' });
     }
 
+    // Increament the view count
+    knowledge.view += 1;
+    await knowledge.save();
+
     res.status(200).json({ message: 'Knowledge', knowledge });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching knowledge by ID', error });
   }
 };
 
-
+// Delete Knowledge's content by knowledgeId
 exports.deleteContent = async (req, res) => {
   try {
     await Knowledge.findByIdAndDelete(req.params.id);

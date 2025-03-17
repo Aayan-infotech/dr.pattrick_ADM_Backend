@@ -1,5 +1,7 @@
 // controllers/contentController.js
+const mongoose = require("mongoose");
 const News = require('../models/newsModel');
+const User = require('../models/userModel'); 
 const multer = require('multer');
 const path = require('path');
 
@@ -27,10 +29,11 @@ exports.uploadImage = (req, res) => {
     }
 
     // Send the uploaded file URL as the response
-    const imageUrl = `http://54.236.98.193:3127/uploads/${req.file.filename}`;
+    const imageUrl = `http://localhost:3127/uploads/${req.file.filename}`;
     res.status(200).json({ imageUrl });
   });
 };
+
 exports.getContents = async (req, res) => {
   try {
     const { page = 1, limit = 10, search = '' } = req.query;
@@ -41,10 +44,12 @@ exports.getContents = async (req, res) => {
 
     // Create search criteria for the title or content
     const searchCriteria = search
-      ? { $or: [
+      ? {
+        $or: [
           { title: { $regex: search, $options: 'i' } },
           { content: { $regex: search, $options: 'i' } }
-        ]}
+        ]
+      }
       : {};
 
     // Fetch news with pagination and search
@@ -70,68 +75,64 @@ exports.getContents = async (req, res) => {
   }
 };
 
-
 // controller code for adding content
 exports.addContent = async (req, res) => {
   try {
-    const { title, content } = req.body;
+    const { title, keywords, content, referenceLink } = req.body;
 
     if (!content) {
-      return res.status(400).json({ message: 'Content is required.' });
+      return res.status(400).json({ message: "Content is required." });
     }
 
-    // Capture file details for thumbnail if it exists
+    let parsedKeywords = [];
+
+    if (keywords) {
+      if (Array.isArray(keywords)) {
+        parsedKeywords = keywords;
+      } else if (typeof keywords === "string") {
+        if (keywords.startsWith("[") && keywords.endsWith("]")) {
+          try {
+            parsedKeywords = JSON.parse(keywords);
+            if (!Array.isArray(parsedKeywords)) {
+              throw new Error();
+            }
+          } catch (error) {
+            return res.status(400).json({ message: "Invalid keywords format. Must be a valid JSON array." });
+          }
+        } else {
+          parsedKeywords = [keywords];
+        }
+      } else {
+        return res.status(400).json({ message: "Invalid keywords format. Must be an array." });
+      }
+    }
+
     const thumbnail = req.file
       ? {
           filename: req.file.originalname,
           contentType: req.file.mimetype,
-          url: req.file.location // assuming multer-s3 provides the file URL here
+          url: req.file.location,
         }
-      : undefined; // Let the default thumbnail take over if no file is uploaded
+      : undefined;
 
-    // Create the news document with the provided details
     const news = new News({
       title,
+      keywords: parsedKeywords,
       content,
-      thumbnail: thumbnail || undefined // set to default if thumbnail is undefined
+      referenceLink,
+      thumbnail: thumbnail || undefined,
     });
 
     await news.save();
+
     res.status(201).json(news);
 
   } catch (error) {
-    console.error(error);
     res.status(500).json({ message: error.message });
   }
 };
 
-
-exports.updateContent = async (req, res) => {
-  try {
-    // Capture file details for thumbnail if it exists
-    const thumbnail = req.file
-      ? {
-          filename: req.file.key,
-          contentType: req.file.mimetype,
-          url: req.file.location
-        }
-      : undefined;
-
-    // Prepare update data with thumbnail if a new one is uploaded
-    const updateData = {
-      ...req.body,
-      ...(thumbnail && { thumbnail })
-    };
-
-    // Update the content with the new data
-    const content = await News.findByIdAndUpdate(req.params.id, updateData, { new: true });
-    res.status(200).json(content);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-};
-
-
+// Get news content by Id
 exports.getNewsById = async (req, res) => {
   try {
     const newsId = req.params.id;
@@ -141,13 +142,173 @@ exports.getNewsById = async (req, res) => {
       return res.status(404).json({ message: 'news not found' });
     }
 
+    // Increment the views count
+    news.views += 1;
+    await news.save();
+
     res.status(200).json({ message: 'News', news });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching news by ID', error });
   }
 };
 
+// Update added news's content 
+// exports.updateContent1 = async (req, res) => {
+//   try {
+//     // Capture file details for thumbnail if it exists
+//     const thumbnail = req.file
+//       ? {
+//         filename: req.file.key,
 
+//         contentType: req.file.mimetype,
+//         url: req.file.location
+//       }
+//       : undefined;
+
+//     // Prepare update data with thumbnail if a new one is uploaded
+//     const updateData = {
+//       ...req.body,
+//       ...(thumbnail && { thumbnail })
+//     };
+
+//     // Update the content with the new data
+//     const content = await News.findByIdAndUpdate(req.params.id, updateData, { new: true });
+//     res.status(200).json(content);
+//   } catch (err) {
+//     res.status(400).json({ message: err.message });
+//   }
+// };
+
+exports.updateContent = async (req, res) => {
+  try {
+    let { title, keywords, content, referenceLink } = req.body;
+    let parsedKeywords = [];
+
+    if (keywords) {
+      if (Array.isArray(keywords)) {
+        parsedKeywords = keywords;
+      } else if (typeof keywords === "string") {
+        try {
+          parsedKeywords = JSON.parse(keywords);
+          if (!Array.isArray(parsedKeywords)) {
+            parsedKeywords = [keywords]; // If it's a single string, treat it as a single keyword
+          }
+        } catch (error) {
+          parsedKeywords = [keywords]; // Treat as a single keyword if JSON parsing fails
+        }
+      } else {
+        return res.status(400).json({ message: "Invalid keywords format. Must be an array or a string." });
+      }
+    }
+
+    const thumbnail = req.file
+      ? {
+          filename: req.file.originalname,
+          contentType: req.file.mimetype,
+          url: req.file.location,
+        }
+      : undefined;
+
+    const updateData = {
+      title,
+      keywords: parsedKeywords,
+      content,
+      referenceLink,
+      ...(thumbnail && { thumbnail })
+    };
+
+    const contentUpdated = await News.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    
+    if (!contentUpdated) {
+      return res.status(404).json({ message: "Content not found." });
+    }
+
+    res.status(200).json(contentUpdated);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+// Add a comment to a news article extract userId from Token
+exports.addComment1 = async (req, res) => {
+  try {
+    const { text } = req.body;
+    const newsId = req.params.newsId;
+    const userId = req.user.id; // Extract userId from auth token
+
+    if (!text) {
+      return res.status(400).json({ message: "Comment text is required." });
+    }
+
+    const news = await News.findById(newsId);
+    if (!news) {
+      return res.status(404).json({ message: "News not found." });
+    }
+
+    // Add the comment
+    news.comments.push({ userId, text });
+
+
+     // Your comment creation logic here
+     console.log(`Adding comment to news ${newsId} by user ${userId}`);
+
+    await news.save();
+
+    res.status(200).json({ message: "Comment added successfully", news });
+  } catch (error) {
+    res.status(500).json({ message: "Error adding comment", error: error.message });
+  }
+};
+
+// Add a comment to a news article use directly newsId and userId in Params
+exports.addComment = async (req, res) => {
+  try {
+    const { newsId, userId } = req.params;
+    let { text } = req.body;
+
+    // Check if all required fields are present
+    if (!newsId || !userId || !text) {
+      return res.status(400).json({ message: "News ID, User ID, and Comment text are required." });
+    }
+
+    // Trim and Validate Comment Text
+    text = text.trim();
+    if (!text) {
+      return res.status(400).json({ message: "Comment text cannot be empty." });
+    }
+
+    if (text.length > 500) {
+      return res.status(400).json({ message: "Comment text exceeds 500 characters." });
+    }
+
+    // Check if the user exists
+    const userExists = await User.findById(userId);
+    if (!userExists) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Find the news article
+    const news = await News.findById(newsId);
+    if (!news) {
+      return res.status(404).json({ message: "News not found." });
+    }
+
+    // Prepare the comment object
+    const newComment = { userId, text, createdAt: new Date(), };
+
+    // Push and save
+    news.comments.push(newComment);
+    await news.save();
+
+    res.status(200).json({ message: "Comment added successfully", news });
+
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    res.status(500).json({ message: "Error adding comment", error: error.message });
+  }
+};
+
+// Delete news's content by Id
 exports.deleteContent = async (req, res) => {
   try {
     await News.findByIdAndDelete(req.params.id);
