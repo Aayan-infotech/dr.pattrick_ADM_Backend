@@ -14,7 +14,7 @@ exports.createCategoryWithSubcategories = async (req, res) => {
           return res.status(400).json({ message: 'Subcategories must be an array' });
       }
 
-      // Create the category with subcategories
+      // Create the category with subcategories 
       const category = new Category({
           name,
           subcategories: subcategories.map(sub => ({ name: sub }))
