@@ -13,6 +13,7 @@ router.put('/:id',upload.single('thumbnail'), newsController.updateContent);
 router.post("/:newsId/comment/:userId", newsController.addComment);
 router.get("/:newsId/comments", newsController.getComments);
 router.delete('/:id', newsController.deleteContent);
+router.delete('/:newsId/:commentId/delete', newsController.deleteComment);
 
 
 module.exports = router;

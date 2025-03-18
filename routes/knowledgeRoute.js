@@ -13,6 +13,6 @@ router.put('/:id',upload.single('thumbnail'), knowledgeController.updateContent)
 router.post('/:knowledgeId/comment/:userId', knowledgeController.addComment);
 router.get('/:knowledgeId/comments', knowledgeController.getComments);
 router.delete('/:id', knowledgeController.deleteContent);
-
+router.delete('/:knowledgeId/:commentId/delete', knowledgeController.deleteComment);
 
 module.exports = router;

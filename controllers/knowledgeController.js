@@ -326,3 +326,33 @@ exports.deleteContent = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// Delete a specific comment from a Knowledge article
+exports.deleteComment = async (req, res) => {
+  try {
+    const { knowledgeId, commentId } = req.params;
+
+    // Find the knowledge article
+    const knowledge = await Knowledge.findById(knowledgeId);
+    if (!knowledge) {
+      return res.status(404).json({ message: "Knowledge not found." });
+    }
+
+    // Find the comment index
+    const commentIndex = knowledge.comments.findIndex(comment => comment._id.toString() === commentId);
+    if (commentIndex === -1) {
+      return res.status(404).json({ message: "Comment not found." });
+    }
+
+    // Remove the comment from the array
+    knowledge.comments.splice(commentIndex, 1);
+
+    // Save the updated knowledge document
+    await knowledge.save();
+
+    res.status(200).json({ message: "Comment deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    res.status(500).json({ message: "Error deleting comment", error: error.message });
+  }
+};

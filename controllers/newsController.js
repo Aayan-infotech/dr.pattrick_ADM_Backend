@@ -301,3 +301,34 @@ exports.deleteContent = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// Delete a specific comment from a news article
+exports.deleteComment = async (req, res) => {
+  try {
+    const { newsId, commentId } = req.params;
+
+    // Find the news article
+    const news = await News.findById(newsId);
+    if (!news) {
+      return res.status(404).json({ message: "News not found." });
+    }
+
+    // Find the comment index
+    const commentIndex = news.comments.findIndex(comment => comment._id.toString() === commentId);
+    if (commentIndex === -1) {
+      return res.status(404).json({ message: "Comment not found." });
+    }
+
+    // Remove the comment from the array
+    news.comments.splice(commentIndex, 1);
+
+    // Save the updated news document
+    await news.save();
+
+    res.status(200).json({ message: "Comment deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    res.status(500).json({ message: "Error deleting comment", error: error.message });
+  }
+};
+
