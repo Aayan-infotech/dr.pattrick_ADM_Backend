@@ -20,6 +20,7 @@ const knowledgeSchema = new mongoose.Schema(
     keywords: [{ type: String }],
     thumbnail: { type: imageSchema1, default: defaultImage },
     content: { type: String, required: true },
+    views: { type: Number, default: 0 },
     referenceLink: { type: String },
     comments: [
       {
@@ -27,7 +28,7 @@ const knowledgeSchema = new mongoose.Schema(
         text: { type: String, required: true },
         createdAt: { type: Date, default: Date.now }
       }
-    ]
+    ],
   },
   {
     timestamps: true
