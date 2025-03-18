@@ -1,7 +1,7 @@
 // controllers/contentController.js
 const mongoose = require("mongoose");
 const News = require('../models/newsModel');
-const User = require('../models/userModel'); 
+const User = require('../models/userModel');
 const multer = require('multer');
 const path = require('path');
 
@@ -34,6 +34,66 @@ exports.uploadImage = (req, res) => {
   });
 };
 
+
+
+// controller code for adding content
+exports.addContent = async (req, res) => {
+  try {
+    const { title, keywords, content, referenceLink } = req.body;
+
+    if (!content) {
+      return res.status(400).json({ message: "Content is required." });
+    }
+
+    let parsedKeywords = [];
+
+    if (keywords) {
+      if (Array.isArray(keywords)) {
+        parsedKeywords = keywords;
+      } else if (typeof keywords === "string") {
+        if (keywords.startsWith("[") && keywords.endsWith("]")) {
+          try {
+            parsedKeywords = JSON.parse(keywords);
+            if (!Array.isArray(parsedKeywords)) {
+              throw new Error();
+            }
+          } catch (error) {
+            return res.status(400).json({ message: "Invalid keywords format. Must be a valid JSON array." });
+          }
+        } else {
+          parsedKeywords = [keywords];
+        }
+      } else {
+        return res.status(400).json({ message: "Invalid keywords format. Must be an array." });
+      }
+    }
+
+    const thumbnail = req.file
+      ? {
+        filename: req.file.originalname,
+        contentType: req.file.mimetype,
+        url: req.file.location,
+      }
+      : undefined;
+
+    const news = new News({
+      title,
+      keywords: parsedKeywords,
+      content,
+      referenceLink,
+      thumbnail: thumbnail || undefined,
+    });
+
+    await news.save();
+
+    res.status(201).json(news);
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get all News
 exports.getContents = async (req, res) => {
   try {
     const { page = 1, limit = 10, search = '' } = req.query;
@@ -75,63 +135,6 @@ exports.getContents = async (req, res) => {
   }
 };
 
-// controller code for adding content
-exports.addContent = async (req, res) => {
-  try {
-    const { title, keywords, content, referenceLink } = req.body;
-
-    if (!content) {
-      return res.status(400).json({ message: "Content is required." });
-    }
-
-    let parsedKeywords = [];
-
-    if (keywords) {
-      if (Array.isArray(keywords)) {
-        parsedKeywords = keywords;
-      } else if (typeof keywords === "string") {
-        if (keywords.startsWith("[") && keywords.endsWith("]")) {
-          try {
-            parsedKeywords = JSON.parse(keywords);
-            if (!Array.isArray(parsedKeywords)) {
-              throw new Error();
-            }
-          } catch (error) {
-            return res.status(400).json({ message: "Invalid keywords format. Must be a valid JSON array." });
-          }
-        } else {
-          parsedKeywords = [keywords];
-        }
-      } else {
-        return res.status(400).json({ message: "Invalid keywords format. Must be an array." });
-      }
-    }
-
-    const thumbnail = req.file
-      ? {
-          filename: req.file.originalname,
-          contentType: req.file.mimetype,
-          url: req.file.location,
-        }
-      : undefined;
-
-    const news = new News({
-      title,
-      keywords: parsedKeywords,
-      content,
-      referenceLink,
-      thumbnail: thumbnail || undefined,
-    });
-
-    await news.save();
-
-    res.status(201).json(news);
-
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
 // Get news content by Id
 exports.getNewsById = async (req, res) => {
   try {
@@ -152,33 +155,7 @@ exports.getNewsById = async (req, res) => {
   }
 };
 
-// Update added news's content 
-// exports.updateContent1 = async (req, res) => {
-//   try {
-//     // Capture file details for thumbnail if it exists
-//     const thumbnail = req.file
-//       ? {
-//         filename: req.file.key,
-
-//         contentType: req.file.mimetype,
-//         url: req.file.location
-//       }
-//       : undefined;
-
-//     // Prepare update data with thumbnail if a new one is uploaded
-//     const updateData = {
-//       ...req.body,
-//       ...(thumbnail && { thumbnail })
-//     };
-
-//     // Update the content with the new data
-//     const content = await News.findByIdAndUpdate(req.params.id, updateData, { new: true });
-//     res.status(200).json(content);
-//   } catch (err) {
-//     res.status(400).json({ message: err.message });
-//   }
-// };
-
+//  Update added News details by newsId
 exports.updateContent = async (req, res) => {
   try {
     let { title, keywords, content, referenceLink } = req.body;
@@ -203,10 +180,10 @@ exports.updateContent = async (req, res) => {
 
     const thumbnail = req.file
       ? {
-          filename: req.file.originalname,
-          contentType: req.file.mimetype,
-          url: req.file.location,
-        }
+        filename: req.file.originalname,
+        contentType: req.file.mimetype,
+        url: req.file.location,
+      }
       : undefined;
 
     const updateData = {
@@ -218,7 +195,7 @@ exports.updateContent = async (req, res) => {
     };
 
     const contentUpdated = await News.findByIdAndUpdate(req.params.id, updateData, { new: true });
-    
+
     if (!contentUpdated) {
       return res.status(404).json({ message: "Content not found." });
     }
@@ -226,37 +203,6 @@ exports.updateContent = async (req, res) => {
     res.status(200).json(contentUpdated);
   } catch (err) {
     res.status(400).json({ message: err.message });
-  }
-};
-
-// Add a comment to a news article extract userId from Token
-exports.addComment1 = async (req, res) => {
-  try {
-    const { text } = req.body;
-    const newsId = req.params.newsId;
-    const userId = req.user.id; // Extract userId from auth token
-
-    if (!text) {
-      return res.status(400).json({ message: "Comment text is required." });
-    }
-
-    const news = await News.findById(newsId);
-    if (!news) {
-      return res.status(404).json({ message: "News not found." });
-    }
-
-    // Add the comment
-    news.comments.push({ userId, text });
-
-
-     // Your comment creation logic here
-     console.log(`Adding comment to news ${newsId} by user ${userId}`);
-
-    await news.save();
-
-    res.status(200).json({ message: "Comment added successfully", news });
-  } catch (error) {
-    res.status(500).json({ message: "Error adding comment", error: error.message });
   }
 };
 
@@ -308,6 +254,44 @@ exports.addComment = async (req, res) => {
   }
 };
 
+// Fetch all comments for a specific news article with user details
+exports.getComments = async (req, res) => {
+  try {
+    const { newsId } = req.params;
+
+    // Check if news exists and populate comments with user details
+    const news = await News.findById(newsId).populate({
+      path: "comments.userId",
+      select: "firstName lastName", // Fetch user's first name and last name
+    });
+
+    if (!news) {
+      return res.status(404).json({ message: "News not found." });
+    }
+
+    // Extract news title
+    const newsTitle = news.title;
+
+    // Format the comments response
+    const formattedComments = news.comments.map(comment => ({
+      _id: comment._id,
+      userId: comment.userId?._id,
+      firstName: comment.userId?.firstName || "Unknown",
+      lastName: comment.userId?.lastName || "User",
+      text: comment.text,
+      createdAt: comment.createdAt,
+    }));
+
+    res.status(200).json({
+      message: "All comments fetched successfully",
+      newsTitle,  // Sending news title only once
+      comments: formattedComments,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching comments", error: error.message });
+  }
+};
+
 // Delete news's content by Id
 exports.deleteContent = async (req, res) => {
   try {
@@ -317,3 +301,34 @@ exports.deleteContent = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// Delete a specific comment from a news article
+exports.deleteComment = async (req, res) => {
+  try {
+    const { newsId, commentId } = req.params;
+
+    // Find the news article
+    const news = await News.findById(newsId);
+    if (!news) {
+      return res.status(404).json({ message: "News not found." });
+    }
+
+    // Find the comment index
+    const commentIndex = news.comments.findIndex(comment => comment._id.toString() === commentId);
+    if (commentIndex === -1) {
+      return res.status(404).json({ message: "Comment not found." });
+    }
+
+    // Remove the comment from the array
+    news.comments.splice(commentIndex, 1);
+
+    // Save the updated news document
+    await news.save();
+
+    res.status(200).json({ message: "Comment deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    res.status(500).json({ message: "Error deleting comment", error: error.message });
+  }
+};
+
