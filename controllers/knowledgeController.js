@@ -284,23 +284,22 @@ exports.getComments = async (req, res) => {
   try {
     const { knowledgeId } = req.params;
 
-    // Check if knowledge exists and populate comments' user details along with the knowledge title
-    const knowledge = await Knowledge.findById(knowledgeId)
-      .populate({
-        path: "comments.userId",
-        select: "firstName lastName", // Only fetch the name fields of the user
-      })
-      .select("title comments"); // Fetch the title along with comments
-
+    // Check if knowledge exists and populate comments with user details
+    const knowledge = await Knowledge.findById(knowledgeId).populate({
+      path: "comments.userId",
+      select: "firstName lastName", // Fetch user first name and last name
+    });
 
     if (!knowledge) {
       return res.status(404).json({ message: "Knowledge not found." });
     }
 
+    // Extract knowledge title
+    const knowledgeTitle = knowledge.title;
+
     // Format the comments response
     const formattedComments = knowledge.comments.map(comment => ({
       _id: comment._id,
-      knowledgeTitle: knowledge.title,
       userId: comment.userId?._id,
       firstName: comment.userId?.firstName || "Unknown",
       lastName: comment.userId?.lastName || "User",
@@ -310,6 +309,7 @@ exports.getComments = async (req, res) => {
 
     res.status(200).json({
       message: "All comments fetched successfully",
+      knowledgeTitle,  // Sending knowledge title only once
       comments: formattedComments,
     });
   } catch (error) {

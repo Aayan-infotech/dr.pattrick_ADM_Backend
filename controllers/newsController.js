@@ -259,15 +259,18 @@ exports.getComments = async (req, res) => {
   try {
     const { newsId } = req.params;
 
-    // Check if news exists
+    // Check if news exists and populate comments with user details
     const news = await News.findById(newsId).populate({
       path: "comments.userId",
-      select: "firstName lastName", // Only fetch the name field of the user
+      select: "firstName lastName", // Fetch user's first name and last name
     });
 
     if (!news) {
       return res.status(404).json({ message: "News not found." });
     }
+
+    // Extract news title
+    const newsTitle = news.title;
 
     // Format the comments response
     const formattedComments = news.comments.map(comment => ({
@@ -281,6 +284,7 @@ exports.getComments = async (req, res) => {
 
     res.status(200).json({
       message: "All comments fetched successfully",
+      newsTitle,  // Sending news title only once
       comments: formattedComments,
     });
   } catch (error) {
