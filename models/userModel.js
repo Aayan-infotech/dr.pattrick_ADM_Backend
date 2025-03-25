@@ -15,11 +15,13 @@ const imageSchema1 = new mongoose.Schema({
 
 const userSchema = new mongoose.Schema(
   {
+    
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
     mobileNumber: { type: String, required: true, unique: true },
     email: { type: String, unique: true, required: true },
     referredBy: { type: String, default: null },
+    basicProfile: { type: mongoose.Schema.Types.ObjectId, ref: 'BasicProfile' },
     otp: { type: String, default: null },
     otpExpiry: { type: Date, default: null },
     isActive: { type: Boolean, default: false },
