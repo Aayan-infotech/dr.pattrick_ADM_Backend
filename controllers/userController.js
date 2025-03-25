@@ -42,56 +42,56 @@ exports.getAllUsers = async (req, res) => {
 };
 
 exports.getUserById = async (req, res) => {
-    try {
-      const userId = req.params.id;
-  
-      // Find user by ID
-      const user = await User.findById(userId);
-  
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-  
-      // Return user details
-      res.status(200).json(user);
-    } catch (error) {
-      res.status(500).json({ message: 'Error fetching user by ID', error });
-    }
-  };
+  try {
+    const userId = req.params.id;
 
-  exports.toggleUserStatus = async (req, res) => {
-    try {
-      const userId = req.params.id;
-  
-      // Find user by ID
-      const user = await User.findById(userId);
-  
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-  
-      // Toggle the isActive status
-      user.isActive = !user.isActive;
-  
-      // Save updated user status
-      await user.save();
-  
-      res.status(200).json({ message: `User ${user.isActive ? 'activated' : 'deactivated'} successfully`, user });
-    } catch (error) {
-      res.status(500).json({ message: 'Error toggling user status', error });
+    // Find user by ID
+    const user = await User.findById(userId).populate('basicProfile');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
+
+    // Return user details
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching user by ID', error });
   }
+};
 
-  exports.deleteUser = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const user = await User.findByIdAndDelete(id);
-        if (!user) {
-          return res.status(404).json({ message: 'User not found' });
-        }
-      
-        return res.status(200).json({ message: 'User Deleted',user });
-    } catch (error) {
-      res.status(500).json({ message: 'Error deleting user', error });
+exports.toggleUserStatus = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    // Find user by ID
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
+
+    // Toggle the isActive status
+    user.isActive = !user.isActive;
+
+    // Save updated user status
+    await user.save();
+
+    res.status(200).json({ message: `User ${user.isActive ? 'activated' : 'deactivated'} successfully`, user });
+  } catch (error) {
+    res.status(500).json({ message: 'Error toggling user status', error });
+  }
+}
+
+exports.deleteUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findByIdAndDelete(id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    return res.status(200).json({ message: 'User Deleted', user });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting user', error });
+  }
 }
