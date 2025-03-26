@@ -30,7 +30,6 @@ exports.getAllUsers = async (req, res) => {
     // Get total count for pagination
     const totalUsers = await User.countDocuments(searchCondition);
 
-    // Return response
     res.status(200).json({
       users,
       totalUsers,
