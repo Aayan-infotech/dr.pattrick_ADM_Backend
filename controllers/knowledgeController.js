@@ -113,6 +113,7 @@ exports.getContents = async (req, res) => {
 
     // Fetch Knowledge with pagination and search
     const contents = await Knowledge.find(searchCriteria)
+      .sort({ createdAt: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum);
 

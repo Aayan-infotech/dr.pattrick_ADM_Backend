@@ -114,6 +114,7 @@ exports.getContents = async (req, res) => {
 
     // Fetch news with pagination and search
     const contents = await News.find(searchCriteria)
+      .sort({ createdAt: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum);
 

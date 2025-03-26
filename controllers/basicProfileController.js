@@ -5,7 +5,7 @@ const BasicProfile = require('../models/basicProfileModel');
 // Get all profiles
 exports.getAllProfiles = async (req, res) => {
   try {
-    const profiles = await BasicProfile.find();
+    const profiles = await BasicProfile.find().sort({ _id: -1 });
     const profileCount = profiles.length;
     res.status(200).json({ message: 'All Profiles', profileCount, profile: profiles });
   } catch (error) {
