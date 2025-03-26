@@ -23,6 +23,7 @@ exports.getAllUsers = async (req, res) => {
 
     // Get paginated users with search
     const users = await User.find(searchCondition)
+      .sort({ createdAt: -1 })
       .skip((options.page - 1) * options.limit)
       .limit(options.limit);
 
