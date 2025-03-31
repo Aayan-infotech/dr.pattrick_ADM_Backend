@@ -30,16 +30,16 @@ const Conditions = require('../models/profileModel');
 // };
 
 // // Get All Conditions
-// exports.getAllConditions = async (req, res) => {
-//     try {
-//         const conditions = await Conditions.find().sort({ _id: -1 });
-//         let count = conditions.length;
-//         res.status(201).json({ total: count, conditions });
+exports.getAllConditions = async (req, res) => {
+    try {
+        const conditions = await Conditions.find().sort({ _id: -1 });
+        let count = conditions.length;
+        res.status(201).json({ total: count, conditions });
 
-//     } catch (error) {
-//         res.status(500).json({ message: 'Error Get all Conditions', error });
-//     }
-// };
+    } catch (error) {
+        res.status(500).json({ message: 'Error Get all Conditions', error });
+    }
+};
 
 // // Get Condition by ID
 // exports.getConditionById = async (req, res) => {
