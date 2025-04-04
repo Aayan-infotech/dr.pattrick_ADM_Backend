@@ -8,10 +8,11 @@ const ProcedureSchema = new mongoose.Schema({
 });
 
 // Use as category
-const ConditionsSchema = new mongoose.Schema({
-    conditionsName: { type: String, required: true },
+const ConditionSchema = new mongoose.Schema({
+    conditionName: { type: String, required: true },
     procedure: [ProcedureSchema],
-});
+}, { timestamps: true }
+);
 
 
 // Section 2
@@ -25,7 +26,8 @@ const SupplementSchema = new mongoose.Schema({
 const MedicationSchema = new mongoose.Schema({
     medicationName: { type: String, required: true },
     supplement: [SupplementSchema],
-});
+}, { timestamps: true }
+);
 
 
 // Section 3
@@ -39,7 +41,8 @@ const AllergySchema = new mongoose.Schema({
 const RoutineSchema = new mongoose.Schema({
     routineName: { type: String, required: true },
     allergy: [AllergySchema],
-});
+}, { timestamps: true }
+);
 
 
 // Section 4
@@ -53,11 +56,12 @@ const VisitSchema = new mongoose.Schema({
 const FamilyHistorySchema = new mongoose.Schema({
     familyMemberName: { type: String, required: true },
     visit: [VisitSchema],
-});
+}, { timestamps: true }
+);
 
 
 module.exports = {
-    Conditions: mongoose.model('Conditions', ConditionsSchema),
+    Conditions: mongoose.model('Conditions', ConditionSchema),
     Medications: mongoose.model('Medications', MedicationSchema),
     Routines: mongoose.model('Routines', RoutineSchema),
     FamilyHistories: mongoose.model('FamilyHistories', FamilyHistorySchema),
