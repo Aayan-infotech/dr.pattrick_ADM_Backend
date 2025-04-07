@@ -1,5 +1,6 @@
 const { Conditions, Medications, Routines, FamilyHistories } = require('../models/profileModel');
 
+// Conditions & Procedures Section
 
 // Create a new Condition
 exports.createCondition = async (req, res) => {
@@ -85,6 +86,7 @@ exports.deleteConditionById = async (req, res) => {
     }
 };
 
+// Medications & Supplements Section
 
 // Create a new Medication
 exports.createMedication = async (req, res) => {
@@ -109,7 +111,7 @@ exports.getAllMedications = async (req, res) => {
     try {
         const medications = await Medications.find().sort({ createdAt: -1 });
         let conut = medications.length;
-        res.status(200).json({ success: true, totalCount: conut, data: medications  });
+        res.status(200).json({ success: true, totalCount: conut, data: medications });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -173,14 +175,20 @@ exports.deleteMedicationById = async (req, res) => {
     }
 };
 
-
+// Routines & Allergies Section
 
 // Create a new Routine
 exports.createRoutine = async (req, res) => {
     try {
         const { routineName, allergy } = req.body;
+
+        if (!routineName || !Array.isArray(allergy)) {
+            return res.status(400).json({ success: false, message: "Invalid input format" });
+        }
+
         const newRoutine = new Routines({ routineName, allergy });
         await newRoutine.save();
+
         res.status(201).json({ success: true, data: newRoutine });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -191,18 +199,85 @@ exports.createRoutine = async (req, res) => {
 exports.getAllRoutines = async (req, res) => {
     try {
         const routines = await Routines.find().sort({ createdAt: -1 });
-        res.status(200).json({ success: true, data: routines });
+        const count = routines.length;
+        res.status(200).json({ success: true, totalCount: count, data: routines });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
+// Get a Routine by ID
+exports.getRoutineById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const routine = await Routines.findById(id);
+        if (!routine) {
+            return res.status(404).json({ success: false, message: 'Routine not found' });
+        }
+
+        res.status(200).json({ success: true, data: routine });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Update a Routine by ID
+exports.updateRoutineById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { routineName, allergy } = req.body;
+
+        if (!routineName || !Array.isArray(allergy)) {
+            return res.status(400).json({ success: false, message: "Invalid input format" });
+        }
+
+        const updatedRoutine = await Routines.findByIdAndUpdate(
+            id,
+            { routineName, allergy },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedRoutine) {
+            return res.status(404).json({ success: false, message: 'Routine not found' });
+        }
+
+        res.status(200).json({ success: true, data: updatedRoutine });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Delete a Routine by ID
+exports.deleteRoutineById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const deletedRoutine = await Routines.findByIdAndDelete(id);
+        if (!deletedRoutine) {
+            return res.status(404).json({ success: false, message: 'Routine not found' });
+        }
+
+        res.status(200).json({ success: true, message: 'Routine deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Family-Member-History & Visite Section
+
 // Create a new Family History record
 exports.createFamilyHistory = async (req, res) => {
     try {
-        const { familyMemberName, visit } = req.body;
-        const newFamilyHistory = new FamilyHistories({ familyMemberName, visit });
+        const { familyMemberConditionName } = req.body;
+
+        if (!familyMemberConditionName) {
+            return res.status(400).json({ success: false, message: "Condition name is required" });
+        }
+
+        const newFamilyHistory = new FamilyHistories({ familyMemberConditionName });
         await newFamilyHistory.save();
+
         res.status(201).json({ success: true, data: newFamilyHistory });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -213,7 +288,66 @@ exports.createFamilyHistory = async (req, res) => {
 exports.getAllFamilyHistories = async (req, res) => {
     try {
         const familyHistories = await FamilyHistories.find().sort({ createdAt: -1 });
-        res.status(200).json({ success: true, data: familyHistories });
+        const count = familyHistories.length;
+        res.status(200).json({ success: true, totalCount: count, data: familyHistories });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Get a Family History by ID
+exports.getFamilyHistoryById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const history = await FamilyHistories.findById(id);
+        if (!history) {
+            return res.status(404).json({ success: false, message: 'Family history not found' });
+        }
+
+        res.status(200).json({ success: true, data: history });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Update a Family History by ID
+exports.updateFamilyHistoryById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { familyMemberConditionName } = req.body;
+
+        if (!familyMemberConditionName) {
+            return res.status(400).json({ success: false, message: "Condition name is required" });
+        }
+
+        const updatedHistory = await FamilyHistories.findByIdAndUpdate(
+            id,
+            { familyMemberConditionName },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedHistory) {
+            return res.status(404).json({ success: false, message: 'Family history not found' });
+        }
+
+        res.status(200).json({ success: true, data: updatedHistory });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Delete a Family History by ID
+exports.deleteFamilyHistoryById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const deletedHistory = await FamilyHistories.findByIdAndDelete(id);
+        if (!deletedHistory) {
+            return res.status(404).json({ success: false, message: 'Family history not found' });
+        }
+
+        res.status(200).json({ success: true, message: 'Family history deleted successfully' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
