@@ -20,31 +20,16 @@ router.delete('/medications/:id', conditionController.deleteMedicationById);
 // Routes for Routines
 router.post('/routines', conditionController.createRoutine);
 router.get('/routines', conditionController.getAllRoutines);
+router.get('/routines/:id', conditionController.getRoutineById);       
+router.put('/routines/:id', conditionController.updateRoutineById);   
+router.delete('/routines/:id', conditionController.deleteRoutineById); 
+
 
 // Routes for Family Histories
 router.post('/family-histories', conditionController.createFamilyHistory);
 router.get('/family-histories', conditionController.getAllFamilyHistories);
+router.get('/family-histories/:id', conditionController.getFamilyHistoryById);         
+router.put('/family-histories/:id', conditionController.updateFamilyHistoryById);   
+router.delete('/family-histories/:id', conditionController.deleteFamilyHistoryById); 
 
 module.exports = router;
-
-
-
-
-
-
-
-
-
-
-
-
-
-// router.post('/conditionWithProcedureAdd', conditionController.createConditionWithProcedure );
-// router.get('/get-all-conditions', conditionController.getAllConditions );
-// router.get('/:id/get', conditionController.getConditionById );
-// router.put('/:id/update', conditionController.updateCondition);
-// router.delete('/:id/delete', conditionController.deleteCondition);
-
-
-// router.post('/addd', conditionController.createCondition);
-
