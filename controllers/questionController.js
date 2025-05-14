@@ -133,7 +133,7 @@ exports.updateQuestionById = async (req, res) => {
   }
 };
 
-// Delete a single question in a set by question _id
+// Delete a single question by question _id
 exports.deleteQuestionById = async (req, res) => {
   try {
     const questionId = req.params.id;
