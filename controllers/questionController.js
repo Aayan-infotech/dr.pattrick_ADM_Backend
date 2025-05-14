@@ -134,41 +134,115 @@ exports.updateQuestionById = async (req, res) => {
 };
 
 // Delete a single question by question _id
+// exports.deleteQuestionById = async (req, res) => {
+//   try {
+//     const questionId = req.params.id;
+
+//     if (!mongoose.isValidObjectId(questionId)) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "Invalid question ID." });
+//     }
+
+//     // Step 1: Find the parent document that contains the question
+//     const parentDoc = await AdminQuestions.findOne({
+//       "questions._id": questionId,
+//     });
+
+//     if (!parentDoc) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "Question not found." });
+//     }
+
+//     // Step 2: Pull the question from the array
+//     const updated = await AdminQuestions.findByIdAndUpdate(
+//       parentDoc._id,
+//       { $pull: { questions: { _id: questionId } } },
+//       { new: true }
+//     );
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Question deleted successfully.",
+//       data: updated,
+//     });
+//   } catch (error) {
+//     console.error("delete question", error);
+//     res.status(500).json({ message: "Error deleting question", error });
+//   }
+// };
+
 exports.deleteQuestionById = async (req, res) => {
   try {
-    const questionId = req.params.id;
+    const { docId, questionId } = req.params;
 
-    if (!mongoose.isValidObjectId(questionId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid question ID." });
+    // Validate ObjectIds
+    if (
+      !mongoose.isValidObjectId(docId) ||
+      !mongoose.isValidObjectId(questionId)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid document or question ID.",
+      });
     }
 
-    // Step 1: Find the parent document that contains the question
-    const parentDoc = await AdminQuestions.findOne({
-      "questions._id": questionId,
-    });
+    // First, find the document and check if the question exists within it
+    const document = await AdminQuestions.findById(docId);
 
-    if (!parentDoc) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Question not found." });
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        message: "Document not found.",
+      });
     }
 
-    // Step 2: Pull the question from the array
-    const updated = await AdminQuestions.findByIdAndUpdate(
-      parentDoc._id,
+    const questionExists = document.questions.id(questionId);
+    if (!questionExists) {
+      return res.status(400).json({
+        success: false,
+        message: "This question does not belong to the given document.",
+      });
+    }
+
+    // Now, remove the question
+    const updatedDoc = await AdminQuestions.findOneAndUpdate(
+      { _id: docId },
       { $pull: { questions: { _id: questionId } } },
       { new: true }
     );
 
+    // Double-check in case something went wrong
+    if (!updatedDoc) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update document after removing question.",
+      });
+    }
+
+    // If no questions remain, delete the document
+    if (updatedDoc.questions.length === 0) {
+      await AdminQuestions.findByIdAndDelete(docId);
+      return res.status(200).json({
+        success: true,
+        message:
+          "Last question deleted. Document removed as it had no more questions.",
+      });
+    }
+
+    // Respond with updated document
     res.status(200).json({
       success: true,
       message: "Question deleted successfully.",
-      data: updated,
+      data: updatedDoc,
     });
   } catch (error) {
-    console.error("delete question", error);
-    res.status(500).json({ message: "Error deleting question", error });
+    console.error("Error deleting question:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 };
