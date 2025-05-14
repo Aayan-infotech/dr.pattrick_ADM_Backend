@@ -6,6 +6,8 @@ router.post('/add-new-question', questionsController.addQuestion);
 router.get('/get-all-questions', questionsController.getAllQuestions);
 router.get('/get-question/:id', questionsController.getQuestionById);
 router.put('/update-question/:id', questionsController.updateQuestionById);
-router.delete('/delete-question/:id', questionsController.deleteQuestionById);
+// router.delete('/delete-question/:id', questionsController.deleteQuestionById);
+router.delete('/delete-question/:docId/:questionId', questionsController.deleteQuestionById);
+
 
 module.exports = router;
