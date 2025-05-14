@@ -34,6 +34,7 @@ const newsRoute = require('./routes/newsRoute');
 const knowledgeRoute = require('./routes/knowledgeRoute');
 const basicProfileRoutes = require('./routes/basicProfileRoutes');
 const profileRoutes = require('./routes/profileRoutes');
+const questionRoutes = require('./routes/questionRoutes');
 
 
 app.use('/api/auth', authRoutes);
@@ -43,7 +44,7 @@ app.use('/api/news', newsRoute);
 app.use('/api/knowledge', knowledgeRoute);
 app.use('/api/profiles', basicProfileRoutes);
 app.use('/api/profileHistory', profileRoutes);
-
+app.use('/api/manage-questions', questionRoutes);
 
 //database connect
 mongoose.set("strictQuery", false)
