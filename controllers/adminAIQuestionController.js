@@ -120,3 +120,118 @@ exports.generateStudyQuestions = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+exports.getAllGeneratedQuestions = async (req, res) => {
+  try {
+    const data = await AdminAIGeneratedQuestion.find().sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      count: data.length,
+      data,
+    });
+  } catch (error) {
+    console.error("Error fetching all generated questions:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+exports.getGeneratedQuestionById = async (req, res) => {
+  try {
+    const { questionId } = req.params;
+
+    if (!questionId) {
+      return res.status(400).json({
+        success: false,
+        message: "questionId parameter is required",
+      });
+    }
+
+    // Find the study document which contains this question subdocument by subdoc _id
+    const result = await AdminAIGeneratedQuestion.findOne(
+      { "questions._id": questionId },
+      { "questions.$": 1 } // Only return the matched question subdocument inside array
+    );
+
+    if (!result || !result.questions || result.questions.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No question found with the given questionId",
+      });
+    }
+
+    // result.questions is an array with one element (the matched subdoc)
+    const question = result.questions[0];
+
+    return res.status(200).json({
+      success: true,
+      data: question,
+    });
+  } catch (error) {
+    console.error("Error fetching question by subdocument ID:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+exports.deleteGeneratedQuestionById = async (req, res) => {
+  try {
+    const { subQuestionId } = req.params;
+
+    if (!subQuestionId) {
+      return res.status(400).json({
+        success: false,
+        message: "subQuestionId parameter is required",
+      });
+    }
+
+    // Step 1: Find the document containing the question
+    const parentDoc = await AdminAIGeneratedQuestion.findOne({ "questions._id": subQuestionId });
+
+    if (!parentDoc) {
+      return res.status(404).json({
+        success: false,
+        message: "Question not found",
+      });
+    }
+
+    // Step 2: Pull the subdocument (question) from the array
+    await AdminAIGeneratedQuestion.updateOne(
+      { _id: parentDoc._id },
+      { $pull: { questions: { _id: subQuestionId } } }
+    );
+
+    // Step 3: Re-fetch the document to check if questions is now empty
+    const updatedDoc = await AdminAIGeneratedQuestion.findById(parentDoc._id);
+
+    if (updatedDoc.questions.length === 0) {
+      // Step 4: Delete the entire document if no questions left
+      await AdminAIGeneratedQuestion.findByIdAndDelete(updatedDoc._id);
+
+      return res.status(200).json({
+        success: true,
+        message: "Last question deleted; document removed as well",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Question deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting question:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
