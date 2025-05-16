@@ -1,81 +1,116 @@
 const mongoose = require("mongoose");
-const AdminQuestions = require("../models/questionModel");
+const axios = require('axios');
+const AdminGeneratedQuestion = require("../models/questionModel");
 
-// Add multiple questions
-exports.addQuestion = async (req, res) => {
+exports.getStudiesIdForAdminQuestion = async (req, res) => {
+    try {
+        const response = await axios.get('https://clinicaltrials.gov/api/v2/studies');
+
+        const studies = response.data.studies || [];
+
+        const data = studies.map(study =>
+            study?.protocolSection?.identificationModule?.nctId)
+        .filter(id => !!id);
+
+        res.status(200).json({ success: true, totalCount: data.length, data})
+    } catch (error) {
+        console.error('Error Get Studies ID', error);
+        res.status(500).json({ message: "Server error", error: error.message });
+    }
+};
+
+// Add questions one or more than one at a same time by passing StudyId in params
+exports.submitAdminQuestions = async (req, res) => {
+  const studyId = req.params.studyId;
+  const { questions } = req.body;
+
+  if (!Array.isArray(questions) || questions.length === 0) {
+    return res.status(400).json({ message: "Questions array is required" });
+  }
+
   try {
-    const { questions } = req.body;
+    // Format questions into array of { question: "..." }
+    const formatted = questions.map(q => ({
+      question: q
+    }));
 
-    if (!Array.isArray(questions) || questions.length === 0) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Questions array is required." });
-    }
+    const saved = await AdminGeneratedQuestion.findOneAndUpdate(
+      { studyId },
+      { $push: { questions: { $each: formatted } } },
+      { upsert: true, new: true }
+    );
 
-    // Validate each question
-    for (const q of questions) {
-      if (typeof q !== "string" || !q.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: "Each question must be a non-empty string.",
-        });
-      }
-    }
-
-    const formattedQuestions = questions.map((q) => ({ question: q.trim() }));
-
-    const newEntry = new AdminQuestions({ questions: formattedQuestions });
-    const saved = await newEntry.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Questions added successfully.",
-      data: saved,
-    });
+    res.status(200).json({ success: true, data: saved });
   } catch (error) {
-    console.error("add question", error);
-    res.status(500).json({ message: "Error add question", error });
+    console.error("Submit Admin Questions Error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// Get all question
+// Get all studies & question
 exports.getAllQuestions = async (req, res) => {
   try {
-    const all = await AdminQuestions.find().sort({ createdAt: -1 });
+    const all = await AdminGeneratedQuestion.find().sort({ createdAt: -1 });
 
-    res.status(200).json({ success: true, data: all });
+    // Count total number of questions across all studies
+    const totalQuestionsCount = all.reduce((sum, study) => {
+      return sum + (study.questions?.length || 0);
+    }, 0);
+
+    res.status(200).json({
+      success: true,
+      totalStudiesCount: all.length,
+      totalQuestionsCount,
+      data: all
+    });
   } catch (error) {
     console.error("get all question", error);
     res.status(500).json({ message: "Error getting all questions", error });
   }
 };
 
-// Get question by ID
+// Get specific sub-question by its ID
 exports.getQuestionById = async (req, res) => {
   try {
     const questionId = req.params.id;
 
     if (!mongoose.isValidObjectId(questionId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid question ID format." });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid question ID format.",
+      });
     }
 
-    // Find the parent document that contains the question with this ID
-    const document = await AdminQuestions.findOne({
+    // Find the parent document that contains the subdocument
+    const document = await AdminGeneratedQuestion.findOne({
       "questions._id": questionId,
     });
 
     if (!document) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Question not found." });
+      return res.status(404).json({
+        success: false,
+        message: "Question not found.",
+      });
     }
 
-    // Return the full document
+    // Extract the specific question subdocument
+    const question = document.questions.id(questionId);
+
+    if (!question) {
+      return res.status(404).json({
+        success: false,
+        message: "Question not found in document.",
+      });
+    }
+
     res.status(200).json({
       success: true,
-      data: document,
+      data: {
+        studyId: document.studyId,    
+        _id: question._id,
+        question: question.question,
+
+      },
     });
   } catch (error) {
     console.error("get question", error);
@@ -83,7 +118,7 @@ exports.getQuestionById = async (req, res) => {
   }
 };
 
-// Update single question in a set by question _id
+// Update a single question by its subdocument _id
 exports.updateQuestionById = async (req, res) => {
   try {
     const questionId = req.params.id;
@@ -102,28 +137,39 @@ exports.updateQuestionById = async (req, res) => {
       });
     }
 
-    // Find the document that contains the question with given ID
-    const document = await AdminQuestions.findOne({
+    // Find the parent document that contains this question
+    const document = await AdminGeneratedQuestion.findOne({
       "questions._id": questionId,
     });
 
     if (!document) {
       return res.status(404).json({
         success: false,
-        message: "Question not found in any document.",
+        message: "Question not found.",
       });
     }
 
-    // Find the question and update it
+    // Find and update the question inside the array
     const questionToUpdate = document.questions.id(questionId);
-    questionToUpdate.question = newQuestion.trim();
 
+    if (!questionToUpdate) {
+      return res.status(404).json({
+        success: false,
+        message: "Question not found in document.",
+      });
+    }
+
+    questionToUpdate.question = newQuestion.trim();
     await document.save();
 
     res.status(200).json({
       success: true,
       message: "Question updated successfully.",
-      data: document,
+      data: {
+        _id: questionToUpdate._id,
+        question: questionToUpdate.question,
+        studyId: document.studyId,
+      },
     });
   } catch (error) {
     console.error("update question", error);
@@ -133,116 +179,59 @@ exports.updateQuestionById = async (req, res) => {
   }
 };
 
-// Delete a single question by question _id
-// exports.deleteQuestionById = async (req, res) => {
-//   try {
-//     const questionId = req.params.id;
-
-//     if (!mongoose.isValidObjectId(questionId)) {
-//       return res
-//         .status(400)
-//         .json({ success: false, message: "Invalid question ID." });
-//     }
-
-//     // Step 1: Find the parent document that contains the question
-//     const parentDoc = await AdminQuestions.findOne({
-//       "questions._id": questionId,
-//     });
-
-//     if (!parentDoc) {
-//       return res
-//         .status(404)
-//         .json({ success: false, message: "Question not found." });
-//     }
-
-//     // Step 2: Pull the question from the array
-//     const updated = await AdminQuestions.findByIdAndUpdate(
-//       parentDoc._id,
-//       { $pull: { questions: { _id: questionId } } },
-//       { new: true }
-//     );
-
-//     res.status(200).json({
-//       success: true,
-//       message: "Question deleted successfully.",
-//       data: updated,
-//     });
-//   } catch (error) {
-//     console.error("delete question", error);
-//     res.status(500).json({ message: "Error deleting question", error });
-//   }
-// };
-
+// Delete a single question (subdocument) by its _id
 exports.deleteQuestionById = async (req, res) => {
   try {
-    const { docId, questionId } = req.params;
+    const questionId = req.params.id;
 
-    // Validate ObjectIds
-    if (
-      !mongoose.isValidObjectId(docId) ||
-      !mongoose.isValidObjectId(questionId)
-    ) {
+    if (!mongoose.isValidObjectId(questionId)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid document or question ID.",
+        message: "Invalid question ID format.",
       });
     }
 
-    // First, find the document and check if the question exists within it
-    const document = await AdminQuestions.findById(docId);
+    // Find the parent document containing the question
+    const document = await AdminGeneratedQuestion.findOne({
+      "questions._id": questionId,
+    });
 
     if (!document) {
       return res.status(404).json({
         success: false,
-        message: "Document not found.",
+        message: "Question not found.",
       });
     }
 
-    const questionExists = document.questions.id(questionId);
-    if (!questionExists) {
-      return res.status(400).json({
-        success: false,
-        message: "This question does not belong to the given document.",
-      });
-    }
+    // Remove the question subdocument by id
+    document.questions.pull({ _id: questionId });
 
-    // Now, remove the question
-    const updatedDoc = await AdminQuestions.findOneAndUpdate(
-      { _id: docId },
-      { $pull: { questions: { _id: questionId } } },
-      { new: true }
-    );
+    if (document.questions.length === 0) {
+      // If no questions remain, remove the whole document
+      await AdminGeneratedQuestion.deleteOne({ _id: document._id });
 
-    // Double-check in case something went wrong
-    if (!updatedDoc) {
-      return res.status(500).json({
-        success: false,
-        message: "Failed to update document after removing question.",
-      });
-    }
-
-    // If no questions remain, delete the document
-    if (updatedDoc.questions.length === 0) {
-      await AdminQuestions.findByIdAndDelete(docId);
       return res.status(200).json({
         success: true,
         message:
-          "Last question deleted. Document removed as it had no more questions.",
+          "Last question deleted; entire question document removed from database.",
+      });
+    } else {
+      // Otherwise save the updated document
+      await document.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Question deleted successfully.",
       });
     }
-
-    // Respond with updated document
-    res.status(200).json({
-      success: true,
-      message: "Question deleted successfully.",
-      data: updatedDoc,
-    });
   } catch (error) {
-    console.error("Error deleting question:", error);
+    console.error("delete question", error);
     res.status(500).json({
-      success: false,
-      message: "Internal server error",
+      message: "Error deleting question",
       error: error.message,
     });
   }
 };
+
+
+
