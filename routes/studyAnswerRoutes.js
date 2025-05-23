@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const studyAnswerController = require('../controllers/adminAIAnswerController');
+const studyAnswerController = require('../controllers/studyAnswerController');
 
 router.get("/get-all-answers", studyAnswerController.getAllUserAnswersOfAIQusetions);
+router.get('/get-all-answers/:userId', studyAnswerController.getAnswersByUserId);
 router.get("/get-answer/:answerId", studyAnswerController.getUserAnswersOfAIQusetionsByAnswerId);
 router.delete("/delete-answer/:answerId", studyAnswerController.deleteUserAnswersOfAIQusetionsByAnswerId);
 
