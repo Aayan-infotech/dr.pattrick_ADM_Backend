@@ -35,8 +35,8 @@ const knowledgeRoute = require('./routes/knowledgeRoute');
 const basicProfileRoutes = require('./routes/basicProfileRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const questionRoutes = require('./routes/questionRoutes');
-const adminAIQuestionRoutes = require('./routes/adminAIQuestionRoutes');
-const userAnswersOfAdminGeneratedQuestionRoutes = require('./routes/adminAIAnswerRoutes');
+const studyQuestionRoutes = require('./routes/studyQuestionRoutes');
+const studyAnswerRoutes = require('./routes/studyAnswerRoutes');
 
 
 app.use('/api/auth', authRoutes);
@@ -47,8 +47,8 @@ app.use('/api/knowledge', knowledgeRoute);
 app.use('/api/profiles', basicProfileRoutes);
 app.use('/api/profileHistory', profileRoutes);
 app.use('/api/manage-questions', questionRoutes);
-app.use('/api/manage-ai-generated-questions', adminAIQuestionRoutes);
-app.use('/api/manage-user-given-answers-of-admin-questions', userAnswersOfAdminGeneratedQuestionRoutes);
+app.use('/api/manage-ai-generated-questions', studyQuestionRoutes);
+app.use('/api/manage-user-given-answers', studyAnswerRoutes);
 
 //database connect
 mongoose.set("strictQuery", false)
