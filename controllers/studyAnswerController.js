@@ -99,33 +99,42 @@ exports.getUserAnswersOfAIQusetionsByAnswerId = async (req, res) => {
     }
 };
   
+// dfdf
 exports.deleteUserAnswersOfAIQusetionsByAnswerId = async (req, res) => {
-    const { answerId } = req.params;
+  const { answerId } = req.params;
 
-    try {
-      // First, find the document that contains the specific answer
-      const studyAnswerDoc = await StudyAnswer.findOne({ "answers._id": answerId });
-  
-      if (!studyAnswerDoc) {
-        return res.status(404).json({ message: "Answer not found." });
-      }
-  
-      // Remove the answer from the array
-      studyAnswerDoc.answers = studyAnswerDoc.answers.filter(
-        (ans) => ans._id.toString() !== answerId
-      );
-  
-      // If no answers remain, remove the `answers` field
-      if (studyAnswerDoc.answers.length === 0) {
-        studyAnswerDoc.set("answers", undefined, { strict: false }); // Unset `answers`
-      }
-  
-      // Save the updated document
-      await studyAnswerDoc.save();
-  
-      res.status(200).json({ success: true, message: "Answer deleted successfully." });
-  
-    } catch (error) {
-      res.status(500).json({ message: "Server error", error: error.message });
+  try {
+    // Find the document that contains the specific answer
+    const studyAnswerDoc = await StudyAnswer.findOne({ "answers._id": answerId });
+
+    if (!studyAnswerDoc) {
+      return res.status(404).json({ message: "Answer not found." });
     }
-};  
+
+    // Filter out the answer
+    studyAnswerDoc.answers = studyAnswerDoc.answers.filter(
+      (ans) => ans._id.toString() !== answerId
+    );
+
+    if (studyAnswerDoc.answers.length === 0) {
+      // 🔥 Delete the whole document if no answers remain
+      await StudyAnswer.deleteOne({ _id: studyAnswerDoc._id });
+      return res.status(200).json({
+        success: true,
+        message: "Last answer deleted. Entire document removed."
+      });
+    } else {
+      // Otherwise, just save the updated document
+      await studyAnswerDoc.save();
+      return res.status(200).json({
+        success: true,
+        message: "Answer deleted successfully."
+      });
+    }
+
+  } catch (error) {
+    console.error("Server error deleting answer:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+ 
